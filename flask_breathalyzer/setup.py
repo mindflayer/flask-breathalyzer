@@ -5,6 +5,10 @@ from setuptools import setup, find_packages
 
 requirements = [
     'Flask>=0.8',
+    'blinker>=1.1',
+]
+test_requirements = [
+    'pytest',
 ]
 datadog_require = [
     'datadog',
@@ -38,7 +42,7 @@ setup(
     ],
     platforms='any',
     install_requires=requirements,
-    # tests_require=['Flask-RESTful[paging]', 'mock>=0.8', 'blinker'],
+    tests_require=test_requirements,
     extras_require={
         'datadog': datadog_require,
     },

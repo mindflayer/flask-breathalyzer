@@ -4,20 +4,21 @@ from raven module
 :copyright: (c) 2010-2012 by the Sentry Team, see AUTHORS for more details.
 :license: BSD, see LICENSE for more details.
 """
+
 import sys
 
 PY2 = sys.version_info[0] == 2
 
 if not PY2:
-    string_types = str,
-    integer_types = int,
+    string_type = str,
+    integer_types = (int,),
     class_types = type,
     text_type = str
     binary_type = bytes
 
     MAXSIZE = sys.maxsize
 else:
-    string_types = basestring,
+    string_type = basestring,
     integer_types = (int, long)
     class_types = (type, types.ClassType)
     text_type = unicode
@@ -40,6 +41,29 @@ else:
             # 64-bit
             MAXSIZE = int((1 << 63) - 1)
             del X
+
+if not PY2:
+    _iterkeys = "keys"
+    _itervalues = "values"
+    _iteritems = "items"
+    _iterlists = "lists"
+else:
+    _iterkeys = "iterkeys"
+    _itervalues = "itervalues"
+    _iteritems = "iteritems"
+    _iterlists = "iterlists"
+
+try:
+    import urlparse as _urlparse
+except ImportError:
+    from urllib import parse as _urlparse  # NOQA
+
+urlparse = _urlparse
+
+
+def iteritems(d, **kw):
+    """Return an iterator over the (key, value) pairs of a dictionary."""
+    return iter(getattr(d, _iteritems)(**kw))
 
 
 def is_protected_type(obj):
@@ -66,7 +90,7 @@ def force_text(s, encoding='utf-8', strings_only=False, errors='strict'):
     if strings_only and is_protected_type(s):
         return s
     try:
-        if not isinstance(s, string_types):
+        if not isinstance(s, string_type):
             if hasattr(s, '__unicode__'):
                 s = s.__unicode__()
             else:
@@ -106,3 +130,26 @@ def to_unicode(value):
         except Exception:
             value = '(Error decoding value)'
     return value
+
+
+# `get_headers` comes from `werkzeug.datastructures.EnvironHeaders`
+def get_headers(environ):
+    """
+    Returns only proper HTTP headers.
+    """
+    for key, value in iteritems(environ):
+        key = str(key)
+        if key.startswith('HTTP_') and key not in \
+           ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH'):
+            yield key[5:].replace('_', '-').title(), value
+        elif key in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
+            yield key.replace('_', '-').title(), value
+
+
+def get_environ(environ):
+    """
+    Returns our whitelisted environment variables.
+    """
+    for key in ('REMOTE_ADDR', 'SERVER_NAME', 'SERVER_PORT'):
+        if key in environ:
+            yield key, environ[key]

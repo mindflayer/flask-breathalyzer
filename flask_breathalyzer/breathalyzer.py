@@ -1,6 +1,11 @@
 from __future__ import absolute_import
+import traceback
+import sys
+import json
 
 from flask import request, current_app, g
+from flask.signals import got_request_exception, request_finished
+from werkzeug.exceptions import ClientDisconnected
 try:
     from flask_login import current_user
 except ImportError:
@@ -8,7 +13,9 @@ except ImportError:
 else:
     has_flask_login = True
 
-from flask_breathalyzer.utils import to_unicode
+from flask_breathalyzer.utils import (
+    text_type, string_type, integer_types, to_unicode, urlparse, get_headers, get_environ
+)
 
 import datadog
 
@@ -33,23 +40,36 @@ class Breathalyzer(object):
         }
     """
 
-    def __init__(self, app=None, client=None, **datadog_options):
+    def __init__(self, app=None, client=None, register_signal=True, **datadog_options):
 
         self.client = client
+        self.register_signal = register_signal
+        self.app = None
 
         if app:
-            self.init_app(app, client, datadog_options)
+            self.init_app(app, client, datadog_options, register_signal)
 
     @property
     def last_event_id(self):
         return getattr(self, '_last_event_id', None)
 
-    def init_app(self, app, client, options):
+    def init_app(self, app, client, options, register_signal=None):
 
         datadog.initialize(**options)
 
+        self.app = app
+
         if client is None:
             self.client = datadog.api
+
+        if register_signal is not None:
+            self.register_signal = register_signal
+
+        app.before_request(self.before_request)
+
+        if self.register_signal:
+            got_request_exception.connect(self.handle_exception, sender=app)
+            request_finished.connect(self.after_request, sender=app)
 
         if not hasattr(app, 'extensions'):
             app.extensions = {}
@@ -71,7 +91,7 @@ class Breathalyzer(object):
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
         try:
-            self.client.user_context(self.get_user_info(request))
+            self.client.user_context(Breathalyzer.get_user_info())
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
 
@@ -81,7 +101,64 @@ class Breathalyzer(object):
         self.client.context.clear()  # FIXME from Sentry module
         return response
 
-    def get_user_info(self, request):
+    def is_json_type(self, content_type):
+        return content_type == 'application/json'
+
+    def get_form_data(self, request):
+        return request.form
+
+    def get_json_data(self, request):
+        return request.data
+
+    def get_http_info_with_retriever(self, request, retriever=None):
+        """
+        Exact method for getting http_info but with form data work around.
+        """
+        if retriever is None:
+            retriever = self.get_form_data
+
+        urlparts = urlparse.urlsplit(request.url)
+
+        try:
+            data = retriever(request)
+        except ClientDisconnected:
+            data = {}
+
+        return {
+            'url': '%s://%s%s' % (urlparts.scheme, urlparts.netloc, urlparts.path),
+            'query_string': urlparts.query,
+            'method': request.method,
+            'data': data,
+            'headers': dict(get_headers(request.environ)),
+            'env': dict(get_environ(request.environ)),
+        }
+
+    def get_http_info(self, request):
+        """
+        Determine how to retrieve actual data by using request.mimetype.
+        """
+        if self.is_json_type(request.mimetype):
+            retriever = self.get_json_data
+        else:
+            retriever = self.get_form_data
+        return self.get_http_info_with_retriever(request, retriever)
+
+    def handle_exception(self, *args, **kwargs):
+        if not self.client:
+            return
+
+        ignored_exc_type_list = current_app.config.get(
+            'BREATHANALYZER_IGNORE_EXCEPTIONS', [])
+        exc = sys.exc_info()[1]
+
+        if any((isinstance(exc, ignored_exc_type)
+                for ignored_exc_type in ignored_exc_type_list)):
+            return
+
+        self.capture_exception(exc_info=kwargs.get('exc_info'))
+
+    @staticmethod
+    def get_user_info():
         """
         Requires Flask-Login (https://pypi.python.org/pypi/Flask-Login/)
         to be installed
@@ -117,3 +194,29 @@ class Breathalyzer(object):
         #             user_info[attr] = getattr(current_user, attr)
 
         return user_info
+
+    def capture_exception(self, *args, **kwargs):
+        # Get a formatted version of the traceback.
+        exc = traceback.format_exc()
+
+        # Make request.headers json-serializable.
+        szble = {}
+        for k, v in request.headers:
+            k = k.upper().replace('-', '_')
+            if isinstance(v, (list, string_type, bool, float) + integer_types):
+                szble[k] = v
+            else:
+                szble[k] = text_type(v)
+
+        title = 'Exception from {0}'.format(request.path)
+        text = "Traceback:\n@@@\n{0}\n@@@\nMetadata:\n@@@\n{1}\n@@@" \
+            .format(exc, json.dumps(szble, indent=2))
+
+        # Submit the exception to Datadog
+        self.client.Event.create(
+            title=title,
+            text=text,
+            tags=[self.app.import_name, 'exception'],
+            aggregation_key=request.path,
+            alert_type='error',
+        )
