@@ -6,6 +6,7 @@ from raven module
 """
 
 import sys
+import types
 
 PY2 = sys.version_info[0] == 2
 

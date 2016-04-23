@@ -2,11 +2,12 @@ install-dev-requirements:
 	pip install -q -e .
 
 install-test-requirements:
+	pip install -q -r requirements.txt
 	pip install -q -r test_requirements.txt
 
 test-python:
 	@echo "Running Python tests"
-	python setup.py -q test || exit 1
+	py.test tests/*py
 	@echo ""
 
 lint-python:

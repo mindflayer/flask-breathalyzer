@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
+import os
 
-
-requirements = open('requirements.txt').read().split('\n')
-test_requirements = open('test_requirements.txt').read().split('\n')
+requirements = open(os.path.join(os.path.dirname(__file__), 'requirements.txt')).read()
+test_requirements = open(os.path.join(os.path.dirname(__file__), 'test_requirements.txt')).read()
 
 setup(
     name='Flask-Breathalyzer',
@@ -14,7 +14,7 @@ setup(
     author='Giorgio Salluzzo',
     author_email='giorgio.salluzzo@gmail.com',
     description='Flask module for submitting timings and exceptions to Datadog.',
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=('tests',)),
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
