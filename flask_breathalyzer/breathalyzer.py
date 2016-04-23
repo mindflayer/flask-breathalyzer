@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import traceback
-import sys
 import json
 
 from flask import request, g
@@ -61,22 +60,23 @@ class Breathalyzer(object):
         if register_signal is not None:
             self.register_signal = register_signal
 
-        app.before_request(self.before_request)
+        self.app.before_request(self.before_request)
 
         if self.register_signal:
-            got_request_exception.connect(Breathalyzer.handle_exception, self)
-            request_finished.connect(Breathalyzer.after_request, self)
+            got_request_exception.connect(self.handle_exception, self.app)
+            request_finished.connect(self.after_request, self.app)
 
-        if not hasattr(app, 'extensions'):
-            app.extensions = {}
-        app.extensions['breathalyzer'] = self
+        if not hasattr(self.app, 'extensions'):
+            self.app.extensions = {}
+        self.app.extensions['breathalyzer'] = self
 
     @property
     def last_event_id(self):
-        return g.breathalyzer_last_event['event']['id']
+        last_event = getattr(g, 'breathalyzer_last_event')
+        if last_event is not None:
+            return last_event['event']['id']
 
-    def before_request(self, *args, **kwargs):
-        self.last_event_id = None
+    def before_request(self):
         # FIXME from Sentry module
         try:
             self.client.http_context(self.get_http_info())
@@ -87,10 +87,9 @@ class Breathalyzer(object):
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
 
-    @staticmethod
-    def after_request(sender, response, **kwargs):
-        if sender.last_event_id:
-            response.headers['X-Breathalyzer-ID'] = sender.last_event_id
+    def after_request(self, sender, response, **extra):
+        if self.last_event_id:
+            response.headers['X-Breathalyzer-ID'] = self.last_event_id
         return response
 
     @staticmethod
@@ -138,20 +137,17 @@ class Breathalyzer(object):
             retriever = Breathalyzer.get_form_data
         return self.get_http_info_with_retriever(retriever)
 
-    @staticmethod
-    def handle_exception(sender, **kwargs):
-        if not sender.client:
+    def handle_exception(self, sender, exception, **extra):
+        if not self.client:
             return
 
-        ignored_exc_type_list = sender.app.config.get(
+        ignored_exc_type_list = sender.config.get(
             'BREATHALYZER_IGNORE_EXCEPTIONS', [])
-        exc = sys.exc_info()[1]
 
-        if any((isinstance(exc, ignored_exc_type)
-                for ignored_exc_type in ignored_exc_type_list)):
+        if any((isinstance(exception, ignored_exc_type) for ignored_exc_type in ignored_exc_type_list)):
             return
 
-        sender.capture_exception(exc_info=kwargs.get('exc_info'))
+        self.capture_exception()
 
     def get_user_info(self):
         """
@@ -190,7 +186,7 @@ class Breathalyzer(object):
 
         return user_info
 
-    def capture_exception(self, *args, **kwargs):
+    def capture_exception(self):
         # Get a formatted version of the traceback.
         exc = traceback.format_exc()
 
