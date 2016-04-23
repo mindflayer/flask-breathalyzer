@@ -8,12 +8,13 @@ test_requirements = open(os.path.join(os.path.dirname(__file__), 'test_requireme
 
 setup(
     name='Flask-Breathalyzer',
-    version='0.1.1',
+    version='0.1.2',
     license='BSD',
     url='https://github.com/mindflayer/flask-breathalyzer',
     author='Giorgio Salluzzo',
     author_email='giorgio.salluzzo@gmail.com',
-    description='Flask module for submitting timings and exceptions to Datadog.',
+    description='Flask module for submitting timings and exceptions to Datadog',
+    long_description=open('README.rst').read(),
     packages=find_packages(exclude=('tests',)),
     classifiers=[
         'Development Status :: 3 - Alpha',
