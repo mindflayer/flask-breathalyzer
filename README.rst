@@ -33,13 +33,13 @@ As second step, we create a test `example.py` file as the following one:
 
 .. code-block:: python
 
-    from flask import Flask, g
+    from flask import Flask
     import datadog
 
     from flask_breathalyzer import Breathalyzer
 
 
-    def test_example(app):
+    def test_example():
 
         app = Flask(__name__)
 
@@ -49,17 +49,17 @@ As second step, we create a test `example.py` file as the following one:
 
         # from http://docs.datadoghq.com/api/
         options = {
-            'api_key': '9775a026f1ca7d1c6c5af9d94d9595a4',
-            'app_key': '87ce4a24b5553d2e482ea8a8500e71b8ad4554ff'
+            'api_key': 'your-datadog-api-key',
+            'app_key': 'your-datadog-app-key'
         }
 
-        with app.app_context():
-            ba = Breathalyzer(app, **options)
-            response = app.test_client().get('/')
+        ba = Breathalyzer(app, **options)
+        with ba.app.app_context():
+            response = test_client.get('/')
             assert response.status == '500 INTERNAL SERVER ERROR'
             assert b'<title>500 Internal Server Error</title>' in response.data
             assert response.mimetype == 'text/html'
-            assert ba.last_event_id == g.breathalyzer_last_event['event']['id']
+            assert isinstance(ba.last_event_id, int)  # your exception is now on Datadog with this ID
 
 
 Let's fire our example test::
