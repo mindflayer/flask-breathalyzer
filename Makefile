@@ -7,7 +7,7 @@ install-test-requirements:
 
 test-python:
 	@echo "Running Python tests"
-	py.test tests/*py
+	python setup.py -q test || exit 1
 	@echo ""
 
 lint-python:

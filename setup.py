@@ -33,6 +33,7 @@ setup(
         'Programming Language :: Python',
         'Topic :: Software Development',
     ],
+    test_suite='runtests.runtests',
     platforms='any',
     install_requires=requirements,
     tests_require=test_requirements,
