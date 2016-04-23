@@ -1,7 +1,8 @@
 from flask import Flask, g
 import pytest
-from flask_breathalyzer import Breathalyzer
 import datadog
+
+from flask_breathalyzer import Breathalyzer
 
 
 @pytest.fixture
