@@ -6,7 +6,6 @@ from raven module
 """
 
 import sys
-import types
 
 PY2 = sys.version_info[0] == 2
 
@@ -74,8 +73,17 @@ def is_protected_type(obj):
     """
     import Decimal
     import datetime
-    return isinstance(obj, integer_types + (type(None), float, Decimal,
-        datetime.datetime, datetime.date, datetime.time))
+    return isinstance(
+        obj,
+        integer_types + (
+            type(None),
+            float,
+            Decimal,
+            datetime.datetime,
+            datetime.date,
+            datetime.time,
+        )
+    )
 
 
 def force_text(s, encoding='utf-8', strings_only=False, errors='strict'):

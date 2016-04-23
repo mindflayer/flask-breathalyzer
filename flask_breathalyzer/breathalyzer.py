@@ -3,7 +3,7 @@ import traceback
 import sys
 import json
 
-from flask import request, current_app, g
+from flask import request, g
 from flask.signals import got_request_exception, request_finished
 from werkzeug.exceptions import ClientDisconnected
 try:
@@ -64,8 +64,8 @@ class Breathalyzer(object):
         app.before_request(self.before_request)
 
         if self.register_signal:
-            got_request_exception.connect(self.handle_exception, sender=app)
-            request_finished.connect(self.after_request, sender=app)
+            got_request_exception.connect(Breathalyzer.handle_exception, self)
+            request_finished.connect(Breathalyzer.after_request, self)
 
         if not hasattr(app, 'extensions'):
             app.extensions = {}
@@ -83,23 +83,26 @@ class Breathalyzer(object):
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
         try:
-            self.client.user_context(Breathalyzer.get_user_info())
+            self.client.user_context(self.get_user_info())
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
 
-    def after_request(self, sender, response, *args, **kwargs):
-        if self.last_event_id:
-            response.headers['X-Breathalyzer-ID'] = self.last_event_id
-        self.client.context.clear()  # FIXME from Sentry module
+    @staticmethod
+    def after_request(sender, response, **kwargs):
+        if sender.last_event_id:
+            response.headers['X-Breathalyzer-ID'] = sender.last_event_id
         return response
 
-    def is_json_type(self, content_type):
+    @staticmethod
+    def is_json_type(content_type):
         return content_type == 'application/json'
 
-    def get_form_data(self):
+    @staticmethod
+    def get_form_data():
         return request.form
 
-    def get_json_data(self):
+    @staticmethod
+    def get_json_data():
         return request.data
 
     def get_http_info_with_retriever(self, retriever=None):
@@ -129,17 +132,18 @@ class Breathalyzer(object):
         """
         Determine how to retrieve actual data by using request.mimetype.
         """
-        if self.is_json_type(request.mimetype):
-            retriever = self.get_json_data
+        if Breathalyzer.is_json_type(request.mimetype):
+            retriever = Breathalyzer.get_json_data
         else:
-            retriever = self.get_form_data
+            retriever = Breathalyzer.get_form_data
         return self.get_http_info_with_retriever(retriever)
 
-    def handle_exception(self, *args, **kwargs):
-        if not self.client:
+    @staticmethod
+    def handle_exception(sender, **kwargs):
+        if not sender.client:
             return
 
-        ignored_exc_type_list = current_app.config.get(
+        ignored_exc_type_list = sender.app.config.get(
             'BREATHALYZER_IGNORE_EXCEPTIONS', [])
         exc = sys.exc_info()[1]
 
@@ -147,10 +151,9 @@ class Breathalyzer(object):
                 for ignored_exc_type in ignored_exc_type_list)):
             return
 
-        self.capture_exception(exc_info=kwargs.get('exc_info'))
+        sender.capture_exception(exc_info=kwargs.get('exc_info'))
 
-    @staticmethod
-    def get_user_info():
+    def get_user_info(self):
         """
         Requires Flask-Login (https://pypi.python.org/pypi/Flask-Login/)
         to be installed
@@ -159,7 +162,7 @@ class Breathalyzer(object):
         if not has_flask_login:
             return
 
-        if not hasattr(current_app, 'login_manager'):
+        if not hasattr(self.app, 'login_manager'):
             return
 
         try:
@@ -192,17 +195,17 @@ class Breathalyzer(object):
         exc = traceback.format_exc()
 
         # Make request.headers json-serializable.
-        szble = {}
+        serializable = {}
         for k, v in request.headers:
             k = k.upper().replace('-', '_')
             if isinstance(v, (list, string_type, bool, float) + integer_types):
-                szble[k] = v
+                serializable[k] = v
             else:
-                szble[k] = text_type(v)
+                serializable[k] = text_type(v)
 
         title = 'Exception from {0}'.format(request.path)
         text = "Traceback:\n@@@\n{0}\n@@@\nMetadata:\n@@@\n{1}\n@@@" \
-            .format(exc, json.dumps(szble, indent=2))
+            .format(exc, json.dumps(serializable, indent=2))
 
         # Submit the exception to Datadog
         g.breathalyzer_last_event = self.client.Event.create(
@@ -212,4 +215,3 @@ class Breathalyzer(object):
             aggregation_key=request.path,
             alert_type='error',
         )
-
