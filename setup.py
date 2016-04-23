@@ -3,16 +3,8 @@
 from setuptools import setup, find_packages
 
 
-requirements = [
-    'Flask>=0.8',
-    'blinker>=1.1',
-]
-test_requirements = [
-    'pytest',
-]
-datadog_require = [
-    'datadog',
-]
+requirements = open('requirements.txt').read().split('\n')
+test_requirements = open('test_requirements.txt').read().split('\n')
 
 setup(
     name='Flask-Breathalyzer',
@@ -45,6 +37,6 @@ setup(
     install_requires=requirements,
     tests_require=test_requirements,
     extras_require={
-        'datadog': datadog_require,
+        'datadog': ('datadog',),
     },
 )
