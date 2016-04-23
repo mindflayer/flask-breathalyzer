@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import traceback
 import json
 
+import datadog
 from flask import request, g
 from flask.signals import got_request_exception, request_finished
 from werkzeug.exceptions import ClientDisconnected
@@ -16,7 +17,6 @@ from flask_breathalyzer.utils import (
     text_type, string_type, integer_types, to_unicode, urlparse, get_headers, get_environ
 )
 
-import datadog
 
 # # Use Statsd, a Python client for DogStatsd
 # from datadog import statsd
