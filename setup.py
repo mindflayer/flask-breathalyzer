@@ -8,7 +8,7 @@ test_requirements = open(os.path.join(os.path.dirname(__file__), 'test_requireme
 
 setup(
     name='Flask-Breathalyzer',
-    version='0.1.0',
+    version='0.1.1',
     license='BSD',
     url='https://github.com/mindflayer/flask-breathalyzer',
     author='Giorgio Salluzzo',
