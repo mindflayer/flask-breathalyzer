@@ -49,10 +49,6 @@ class Breathalyzer(object):
         if app:
             self.init_app(app, client, datadog_options, register_signal)
 
-    @property
-    def last_event_id(self):
-        return getattr(self, '_last_event_id', None)
-
     def init_app(self, app, client, options, register_signal=None):
 
         datadog.initialize(**options)
@@ -75,19 +71,19 @@ class Breathalyzer(object):
             app.extensions = {}
         app.extensions['breathalyzer'] = self
 
+    @property
+    def last_event_id(self):
+        return getattr(self, '_last_event_id', None)
+
     @last_event_id.setter
     def last_event_id(self, value):
         self._last_event_id = value
-        try:
-            g.sentry_event_id = value  # FIXME from Sentry module
-        except Exception:
-            pass
 
     def before_request(self, *args, **kwargs):
         self.last_event_id = None
         # FIXME from Sentry module
         try:
-            self.client.http_context(self.get_http_info(request))
+            self.client.http_context(self.get_http_info())
         except Exception as e:
             self.client.logger.exception(to_unicode(e))
         try:
@@ -104,13 +100,13 @@ class Breathalyzer(object):
     def is_json_type(self, content_type):
         return content_type == 'application/json'
 
-    def get_form_data(self, request):
+    def get_form_data(self):
         return request.form
 
-    def get_json_data(self, request):
+    def get_json_data(self):
         return request.data
 
-    def get_http_info_with_retriever(self, request, retriever=None):
+    def get_http_info_with_retriever(self, retriever=None):
         """
         Exact method for getting http_info but with form data work around.
         """
@@ -120,7 +116,7 @@ class Breathalyzer(object):
         urlparts = urlparse.urlsplit(request.url)
 
         try:
-            data = retriever(request)
+            data = retriever()
         except ClientDisconnected:
             data = {}
 
@@ -133,7 +129,7 @@ class Breathalyzer(object):
             'env': dict(get_environ(request.environ)),
         }
 
-    def get_http_info(self, request):
+    def get_http_info(self):
         """
         Determine how to retrieve actual data by using request.mimetype.
         """
@@ -141,14 +137,14 @@ class Breathalyzer(object):
             retriever = self.get_json_data
         else:
             retriever = self.get_form_data
-        return self.get_http_info_with_retriever(request, retriever)
+        return self.get_http_info_with_retriever(retriever)
 
     def handle_exception(self, *args, **kwargs):
         if not self.client:
             return
 
         ignored_exc_type_list = current_app.config.get(
-            'BREATHANALYZER_IGNORE_EXCEPTIONS', [])
+            'BREATHALYZER_IGNORE_EXCEPTIONS', [])
         exc = sys.exc_info()[1]
 
         if any((isinstance(exc, ignored_exc_type)
@@ -213,10 +209,11 @@ class Breathalyzer(object):
             .format(exc, json.dumps(szble, indent=2))
 
         # Submit the exception to Datadog
-        self.client.Event.create(
+        g.breathalyzer_last_event = self.client.Event.create(
             title=title,
             text=text,
             tags=[self.app.import_name, 'exception'],
             aggregation_key=request.path,
             alert_type='error',
         )
+        self.last_event_id = g.breathalyzer_last_event['event']['id']

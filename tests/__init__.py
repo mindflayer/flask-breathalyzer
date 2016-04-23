@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, g
 import pytest
 from flask_breathalyzer import Breathalyzer
 import datadog
@@ -36,9 +36,10 @@ def test_initapp(app):
         'app_key': '87ce4a24b5553d2e482ea8a8500e71b8ad4554ff'
     }
 
-    Breathalyzer(app, **options)
-    response = app.test_client().get('/')
-    assert response.status == '500 INTERNAL SERVER ERROR'
-    assert b'<title>500 Internal Server Error</title>' in response.data
-    assert response.mimetype == 'text/html'
-
+    with app.app_context():
+        ba = Breathalyzer(app, **options)
+        response = app.test_client().get('/')
+        assert response.status == '500 INTERNAL SERVER ERROR'
+        assert b'<title>500 Internal Server Error</title>' in response.data
+        assert response.mimetype == 'text/html'
+        assert ba.last_event_id == g.breathalyzer_last_event['event']['id']
