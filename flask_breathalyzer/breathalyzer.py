@@ -73,11 +73,7 @@ class Breathalyzer(object):
 
     @property
     def last_event_id(self):
-        return getattr(self, '_last_event_id', None)
-
-    @last_event_id.setter
-    def last_event_id(self, value):
-        self._last_event_id = value
+        return g.breathalyzer_last_event['event']['id']
 
     def before_request(self, *args, **kwargs):
         self.last_event_id = None
@@ -216,4 +212,4 @@ class Breathalyzer(object):
             aggregation_key=request.path,
             alert_type='error',
         )
-        self.last_event_id = g.breathalyzer_last_event['event']['id']
+
