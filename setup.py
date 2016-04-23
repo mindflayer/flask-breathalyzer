@@ -24,6 +24,7 @@ setup(
     description='Flask module for submitting timings and exceptions to Datadog.',
     packages=find_packages(exclude=['tests']),
     classifiers=[
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'Operating System :: OS Independent',
