@@ -60,8 +60,6 @@ class Breathalyzer(object):
         if register_signal is not None:
             self.register_signal = register_signal
 
-        self.app.before_request(self.before_request)
-
         if self.register_signal:
             got_request_exception.connect(self.handle_exception, self.app)
             request_finished.connect(self.after_request, self.app)
@@ -72,20 +70,13 @@ class Breathalyzer(object):
 
     @property
     def last_event_id(self):
+        return self.last_event['event']['id']
+
+    @property
+    def last_event(self):
         last_event = getattr(g, 'breathalyzer_last_event')
         if last_event is not None:
-            return last_event['event']['id']
-
-    def before_request(self):
-        # FIXME from Sentry module
-        try:
-            self.client.http_context(self.get_http_info())
-        except Exception as e:
-            self.client.logger.exception(to_unicode(e))
-        try:
-            self.client.user_context(self.get_user_info())
-        except Exception as e:
-            self.client.logger.exception(to_unicode(e))
+            return last_event
 
     def after_request(self, sender, response, **extra):
         if self.last_event_id:
@@ -190,18 +181,20 @@ class Breathalyzer(object):
         # Get a formatted version of the traceback.
         exc = traceback.format_exc()
 
-        # Make request.headers json-serializable.
-        serializable = {}
-        for k, v in request.headers:
-            k = k.upper().replace('-', '_')
-            if isinstance(v, (list, string_type, bool, float) + integer_types):
-                serializable[k] = v
-            else:
-                serializable[k] = text_type(v)
+        info = dict(http_info=self.get_http_info(), user_info=self.get_user_info())
+
+        # # Make request.headers json-serializable.
+        # serializable = {}
+        # for k, v in request.headers:
+        #     k = k.upper().replace('-', '_')
+        #     if isinstance(v, (list, string_type, bool, float) + integer_types):
+        #         serializable[k] = v
+        #     else:
+        #         serializable[k] = text_type(v)
 
         title = 'Exception from {0}'.format(request.path)
         text = "Traceback:\n@@@\n{0}\n@@@\nMetadata:\n@@@\n{1}\n@@@" \
-            .format(exc, json.dumps(serializable, indent=2))
+            .format(exc, json.dumps(info, indent=2))
 
         # Submit the exception to Datadog
         g.breathalyzer_last_event = self.client.Event.create(

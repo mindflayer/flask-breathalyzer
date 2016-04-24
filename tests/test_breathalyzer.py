@@ -46,3 +46,4 @@ def test_initapp(app):
         assert b'<title>500 Internal Server Error</title>' in response.data
         assert response.mimetype == 'text/html'
         assert isinstance(ba.last_event_id, int)
+        assert 'ZeroDivisionError' in ba.last_event['event']['text']
