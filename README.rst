@@ -11,6 +11,8 @@ Flask-Breathalyzer
 A Flask module pushing exceptions to Datadog
 --------------------------------------------
 
+.. image:: https://raw.githubusercontent.com/mindflayer/flask-breathalyzer/master/Flask-Breathalyzer.png
+
 Installation
 ============
 Using pip::
