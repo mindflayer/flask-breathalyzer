@@ -1,5 +1,5 @@
 install-dev-requirements:
-	pip install -q -e . [datadog]
+	pip install -q -e .[datadog]
 
 install-test-requirements:
 	pip install -q -r test_requirements.txt
