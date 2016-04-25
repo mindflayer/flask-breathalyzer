@@ -39,11 +39,15 @@ def test_initapp(app):
         'app_key': '87ce4a24b5553d2e482ea8a8500e71b8ad4554ff'
     }
 
+    # import time
+    # import datetime
+    # now = datetime.datetime.now()
+    # timestamp = int(time.mktime(now.timetuple()))
     ba = Breathalyzer(app, **options)
-    with ba.app.app_context():
-        response = test_client.get('/')
-        assert response.status == '500 INTERNAL SERVER ERROR'
-        assert b'<title>500 Internal Server Error</title>' in response.data
-        assert response.mimetype == 'text/html'
-        assert isinstance(ba.last_event_id, int)
-        assert 'ZeroDivisionError' in ba.last_event['event']['text']
+    response = test_client.get('/')
+    assert response.status == '500 INTERNAL SERVER ERROR'
+    assert b'<title>500 Internal Server Error</title>' in response.data
+    assert response.mimetype == 'text/html'
+    assert 'ZeroDivisionError' in ba.last_event['event']['text']
+    assert ba.last_event_id == ba.last_event['event']['id']
+    # assert ba.client.Event.query(start=timestamp) == []

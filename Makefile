@@ -1,8 +1,7 @@
 install-dev-requirements:
-	pip install -q -e .
+	pip install -q -e . [datadog]
 
 install-test-requirements:
-	pip install -q -r requirements.txt
 	pip install -q -r test_requirements.txt
 
 test-python:
@@ -12,7 +11,7 @@ test-python:
 
 lint-python:
 	@echo "Linting Python files"
-	flake8 --exit-zero --ignore=E501 --exclude=.git,compat.py flask_breathalyzer
+	flake8 --exit-zero --ignore=E501 --exclude=.git,utils.py flask_breathalyzer
 	@echo ""
 
 develop: install-dev-requirements install-test-requirements

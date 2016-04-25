@@ -56,12 +56,11 @@ As second step, we create a test `example.py` file as the following one:
         }
 
         ba = Breathalyzer(app, **options)
-        with ba.app.app_context():
-            response = test_client.get('/')
-            assert response.status == '500 INTERNAL SERVER ERROR'
-            assert b'<title>500 Internal Server Error</title>' in response.data
-            assert response.mimetype == 'text/html'
-            assert isinstance(ba.last_event_id, int)  # your exception is now on Datadog with this ID
+        response = test_client.get('/')
+        assert response.status == '500 INTERNAL SERVER ERROR'
+        assert b'<title>500 Internal Server Error</title>' in response.data
+        assert response.mimetype == 'text/html'
+        assert isinstance(ba.last_event_id, int)  # your exception is now on Datadog with this ID
 
 
 Let's fire our example test::

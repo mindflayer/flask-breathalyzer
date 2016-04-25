@@ -3,7 +3,8 @@ import traceback
 import json
 
 import datadog
-from flask import request, g
+from flask import request
+from flask import _app_ctx_stack as app_context
 from flask.signals import got_request_exception, request_finished
 from werkzeug.exceptions import ClientDisconnected
 try:
@@ -14,21 +15,8 @@ else:
     has_flask_login = True
 
 from flask_breathalyzer.utils import (
-    text_type, string_type, integer_types, to_unicode, urlparse, get_headers, get_environ
+    urlparse, get_headers, get_environ
 )
-
-
-# # Use Statsd, a Python client for DogStatsd
-# from datadog import statsd
-#
-# statsd.increment('whatever')
-# statsd.gauge('foo', 42)
-#
-# # Or ThreadStats, an alternative tool to collect and flush metrics, using Datadog REST API
-# from datadog import ThreadStats
-# stats = ThreadStats()
-# stats.start()
-# stats.increment('home.page.hits')
 
 
 class Breathalyzer(object):
@@ -74,7 +62,7 @@ class Breathalyzer(object):
 
     @property
     def last_event(self):
-        last_event = getattr(g, 'breathalyzer_last_event')
+        last_event = getattr(app_context, 'breathalyzer_last_event')
         if last_event is not None:
             return last_event
 
@@ -170,11 +158,6 @@ class Breathalyzer(object):
             'id': current_user.get_id(),
         }
 
-        # if 'SENTRY_USER_ATTRS' in current_app.config:
-        #     for attr in current_app.config['SENTRY_USER_ATTRS']:
-        #         if hasattr(current_user, attr):
-        #             user_info[attr] = getattr(current_user, attr)
-
         return user_info
 
     def capture_exception(self):
@@ -183,21 +166,12 @@ class Breathalyzer(object):
 
         info = dict(http_info=self.get_http_info(), user_info=self.get_user_info())
 
-        # # Make request.headers json-serializable.
-        # serializable = {}
-        # for k, v in request.headers:
-        #     k = k.upper().replace('-', '_')
-        #     if isinstance(v, (list, string_type, bool, float) + integer_types):
-        #         serializable[k] = v
-        #     else:
-        #         serializable[k] = text_type(v)
-
         title = 'Exception from {0}'.format(request.path)
         text = "Traceback:\n@@@\n{0}\n@@@\nMetadata:\n@@@\n{1}\n@@@" \
             .format(exc, json.dumps(info, indent=2))
 
         # Submit the exception to Datadog
-        g.breathalyzer_last_event = self.client.Event.create(
+        app_context.breathalyzer_last_event = self.client.Event.create(
             title=title,
             text=text,
             tags=[self.app.import_name, 'exception'],
