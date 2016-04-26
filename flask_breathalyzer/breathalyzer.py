@@ -58,7 +58,10 @@ class Breathalyzer(object):
 
     @property
     def last_event_id(self):
-        return self.last_event['event']['id']
+        try:
+            return self.last_event['event']['id']
+        except KeyError:
+            return None
 
     @property
     def last_event(self):
