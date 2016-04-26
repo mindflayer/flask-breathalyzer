@@ -29,7 +29,7 @@ Let's create a new virtualenv with all we need::
 
     $ virtualenv example
     $ source example/bin/activate
-    $ pip install pytest datadog flask_breathalyzer[datadog]
+    $ pip install pytest flask_breathalyzer[datadog]
 
 As second step, we create a test `example.py` file as the following one:
 
