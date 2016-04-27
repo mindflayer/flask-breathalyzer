@@ -44,6 +44,7 @@ def test_initapp(app):
     # now = datetime.datetime.now()
     # timestamp = int(time.mktime(now.timetuple()))
     ba = Breathalyzer(app, **options)
+    assert ba.last_event_id is None
     response = test_client.get('/')
     assert response.status == '500 INTERNAL SERVER ERROR'
     assert b'<title>500 Internal Server Error</title>' in response.data

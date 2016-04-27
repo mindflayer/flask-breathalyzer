@@ -60,12 +60,12 @@ class Breathalyzer(object):
     def last_event_id(self):
         try:
             return self.last_event['event']['id']
-        except KeyError:
+        except TypeError:
             return None
 
     @property
     def last_event(self):
-        last_event = getattr(app_context, 'breathalyzer_last_event')
+        last_event = getattr(app_context, 'breathalyzer_last_event', None)
         if last_event is not None:
             return last_event
 
