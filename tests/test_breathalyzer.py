@@ -28,7 +28,6 @@ def test_initapp(app):
 
     Breathalyzer(app, api_key='api_key', app_key='app_key')
 
-
     header = 'Accept'
     html = 'text/html'
     try:
