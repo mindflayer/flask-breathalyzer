@@ -10,12 +10,9 @@ import sys
 PY2 = sys.version_info[0] == 2
 
 if not PY2:
-    binary_type = bytes
     _iteritems = "items"
     MAXSIZE = sys.maxsize
-
 else:
-    binary_type = str
     _iteritems = "iteritems"
 
     if sys.platform.startswith("java"):
@@ -70,3 +67,39 @@ def get_environ(environ):
     for key in ('REMOTE_ADDR', 'SERVER_NAME', 'SERVER_PORT'):
         if key in environ:
             yield key, environ[key]
+
+
+def apply_blacklist(dic, lis, separator='/', value_to_replace='BLACKLISTED'):
+    """
+    :param dic: dictionary with some potential keys to blacklist
+    :param lis: list (or tuple) of string paths (via /slashed/paths à la xpath) to blacklist
+    :param separator: str separator used to reach the nested values
+    :param value_to_replace: value to replace blacklisted ones
+    :return: a new dictionary without the blacklisted elements
+    """
+    class NestedDict(dict):
+        """
+        Nested dictionary of arbitrary depth with autovivification.
+        Allows data access via extended slice notation.
+        http://stackoverflow.com/questions/15077973/how-can-i-access-a-deeply-nested-dictionary-using-tuples
+        """
+        def __setitem__(self, keys, value):
+            # Let's assume *keys* is a list or tuple.
+            if isinstance(keys, (tuple, list)):
+                try:
+                    node = self
+                    for key in keys[:-1]:
+                        try:
+                            node = dict.__getitem__(node, key)
+                        except KeyError:
+                            node[key] = type(self)()
+                            node = node[key]
+                    return dict.__setitem__(node, keys[-1], value)
+                except TypeError:
+                    # *keys* is not a list or tuple.
+                    pass
+            dict.__setitem__(self, keys, value)
+    nd = NestedDict(dic)
+    for l in lis:
+        nd[l.split(separator)[1:]] = value_to_replace
+    return nd

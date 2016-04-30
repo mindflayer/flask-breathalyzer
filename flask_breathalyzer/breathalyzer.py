@@ -15,7 +15,7 @@ else:
     has_flask_login = True
 
 from flask_breathalyzer.utils import (
-    urlparse, get_headers, get_environ
+    urlparse, get_headers, get_environ, apply_blacklist
 )
 
 
@@ -27,28 +27,29 @@ class Breathalyzer(object):
         }
     """
 
-    def __init__(self, app=None, client=None, register_signal=True, **datadog_options):
+    def __init__(
+            self, app=None, client=None, register_signal=True,
+            data_blacklist=None, headers_blacklist=None, **datadog_options
+    ):
 
         self.client = client
         self.register_signal = register_signal
         self.app = None
+        self.data_blacklist = data_blacklist
+        self.headers_blacklist = headers_blacklist
 
         if app:
-            self.init_app(app, client, datadog_options, register_signal)
+            self.init_app(app, datadog_options)
 
-    def init_app(self, app, client, options, register_signal=None):
-
-        datadog.initialize(**options)
+    def init_app(self, app, options):
 
         self.app = app
 
-        if client is None:
+        if self.client is None:
+            datadog.initialize(**options)
             self.client = datadog.api
 
-        if register_signal is not None:
-            self.register_signal = register_signal
-
-        if self.register_signal:
+        if self.register_signal and self.client:
             got_request_exception.connect(self.handle_exception, self.app)
             request_finished.connect(self.after_request, self.app)
 
@@ -93,19 +94,26 @@ class Breathalyzer(object):
         if retriever is None:
             retriever = self.get_form_data
 
-        urlparts = urlparse.urlsplit(request.url)
+        url_parts = urlparse.urlsplit(request.url)
 
         try:
             data = retriever()
         except ClientDisconnected:
             data = {}
 
+        headers = dict(get_headers(request.environ))
+
+        if self.data_blacklist:
+            data = apply_blacklist(data, self.data_blacklist)
+        if self.headers_blacklist:
+            headers = apply_blacklist(headers, self.headers_blacklist)
+
         return {
-            'url': '%s://%s%s' % (urlparts.scheme, urlparts.netloc, urlparts.path),
-            'query_string': urlparts.query,
+            'url': '%s://%s%s' % (url_parts.scheme, url_parts.netloc, url_parts.path),
+            'query_string': url_parts.query,
             'method': request.method,
             'data': data,
-            'headers': dict(get_headers(request.environ)),
+            'headers': headers,
             'env': dict(get_environ(request.environ)),
         }
 
