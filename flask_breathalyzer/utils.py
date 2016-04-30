@@ -72,7 +72,7 @@ def get_environ(environ):
 def apply_blacklist(dic, lis, separator='/', value_to_replace='BLACKLISTED'):
     """
     :param dic: dictionary with some potential keys to blacklist
-    :param lis: list (or tuple) of string paths (via /slashed/paths à la xpath) to blacklist
+    :param lis: list (or tuple) of string paths (via /slashed/paths XPATH style) to blacklist
     :param separator: str separator used to reach the nested values
     :param value_to_replace: value to replace blacklisted ones
     :return: a new dictionary without the blacklisted elements
