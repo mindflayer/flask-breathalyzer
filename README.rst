@@ -16,7 +16,7 @@ A Flask module pushing exceptions to Datadog
 Features
 ========
 - Pushing exceptions to Datadog;
-- Blacklist for `headers` or `data` as list of *XPATH style* strings (you may have some headers you do not want to publish for privacy, or maybe some body fields you do not need to display - e.g.: base64 blob).
+- Blacklist for `headers` or `data` as list of *XPATH style* strings (you may have some headers you do not want to publish for privacy, or maybe some body fields you do not need to display - e.g.: a base64 blob).
 
 Installation
 ============

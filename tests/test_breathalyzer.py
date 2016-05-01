@@ -43,15 +43,21 @@ def test_initapp(app):
         'app_key': '87ce4a24b5553d2e482ea8a8500e71b8ad4554ff'
     }
 
-    l = ['/{0}'.format(header)]
-    ba = Breathalyzer(app, headers_blacklist=l, data_blacklist=l, **options)
+    to_ban = ('to ban', 'Guido Van Rossum')
+    to_find = ('to find', 'Raymond Hettinger')
+    data = dict((to_ban, to_find))
+    h_blacklist = ['/{0}'.format(header)]
+    d_blacklist = ['/{0}'.format(to_ban[0])]
+    ba = Breathalyzer(app, headers_blacklist=h_blacklist, data_blacklist=d_blacklist, **options)
     assert ba.last_event_id is None
-    response = test_client.get('/')
+    response = test_client.post('/', data=data)
     assert response.status == '500 INTERNAL SERVER ERROR'
     assert b'<title>500 Internal Server Error</title>' in response.data
     assert response.mimetype == 'text/html'
     assert 'ZeroDivisionError' in ba.last_event['event']['text']
     assert ba.last_event_id == ba.last_event['event']['id']
+    assert to_ban[1] not in ba.last_event['event']['text']
+    assert to_find[1] in ba.last_event['event']['text']
 
 
 def test_apply_blacklist():
