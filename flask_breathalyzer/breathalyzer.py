@@ -115,7 +115,7 @@ class Breathalyzer(object):
 
     def get_http_info(self):
         """
-        Determine how to retrieve actual data by using request.mimetype.
+        Determine how to retrieve actual data, basically if it's JSON or not.
         """
         try:
             is_json = request.is_json
