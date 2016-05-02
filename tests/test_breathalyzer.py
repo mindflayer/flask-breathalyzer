@@ -13,7 +13,7 @@ def app():
 
 
 def test_initapp(app):
-    @app.route("/", methods=['GET', 'POST'])
+    @app.route('/', methods=['GET', 'POST'])
     def boom():
         1/0
 
@@ -50,7 +50,7 @@ def test_initapp(app):
     d_blacklist = ['/{0}'.format(to_ban[0])]
     ba = Breathalyzer(app, headers_blacklist=h_blacklist, data_blacklist=d_blacklist, **options)
     assert ba.last_event_id is None
-    response = test_client.post('/', data=data)
+    response = test_client.post('/', data=json.dumps(data), content_type='application/json')
     assert response.status == '500 INTERNAL SERVER ERROR'
     assert b'<title>500 Internal Server Error</title>' in response.data
     assert response.mimetype == 'text/html'

@@ -76,16 +76,12 @@ class Breathalyzer(object):
         return response
 
     @staticmethod
-    def is_json_type(content_type):
-        return content_type == 'application/json'
-
-    @staticmethod
     def get_form_data():
         return request.form
 
     @staticmethod
     def get_json_data():
-        return request.data
+        return request.get_json(force=True)
 
     def get_http_info_with_retriever(self, retriever=None):
         """
@@ -121,7 +117,11 @@ class Breathalyzer(object):
         """
         Determine how to retrieve actual data by using request.mimetype.
         """
-        if Breathalyzer.is_json_type(request.mimetype):
+        try:
+            is_json = request.is_json
+        except AttributeError:
+            is_json = request.get_json(silent=True) is not None
+        if is_json:
             retriever = Breathalyzer.get_json_data
         else:
             retriever = Breathalyzer.get_form_data
