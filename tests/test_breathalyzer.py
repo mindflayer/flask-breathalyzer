@@ -34,6 +34,11 @@ def secret_key():
     return os.urandom(24)
 
 
+@pytest.fixture
+def user_id():
+    return 'DrunkUser'
+
+
 def test_failing_initapp(app, test_client_instance, path_info):
     @app.route(path_info)
     def boom():
@@ -56,7 +61,7 @@ def test_failing_initapp(app, test_client_instance, path_info):
         assert 'Invalid API Key' in e.args[0]
 
 
-def test_succesful_event(app, test_client, path_info, secret_key):
+def test_succesful_event(app, test_client, path_info, secret_key, user_id):
     @app.route(path_info, methods=['GET', 'POST'])
     def boom():
         1 / 0
@@ -76,16 +81,14 @@ def test_succesful_event(app, test_client, path_info, secret_key):
     h_blacklist = ['/{0}'.format(header)]
     d_blacklist = ['/{0}'.format(to_ban[0])]
 
-    user_id = 'DrunkUser'
     app.secret_key = secret_key
     login_manager = flask_login.LoginManager()
 
-    class User(flask_login.UserMixin):
-        def get_id(self):
-            return user_id
-
     @login_manager.user_loader
     def user_loader(username):
+        class User(flask_login.UserMixin):
+            def get_id(self):
+                return user_id
         return User()
 
     login_manager.init_app(app)
