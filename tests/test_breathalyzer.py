@@ -1,7 +1,9 @@
 import json
+import os
 import pytest
 import datadog
 from flask import Flask
+import flask.ext.login as flask_login
 
 from flask_breathalyzer import Breathalyzer
 from flask_breathalyzer.utils import apply_blacklist
@@ -13,8 +15,13 @@ def app():
 
 
 @pytest.fixture
-def test_client(app):
+def test_client_instance(app):
     return app.test_client()
+
+
+@pytest.fixture
+def test_client(app):
+    return app.test_client
 
 
 @pytest.fixture
@@ -22,7 +29,12 @@ def path_info():
     return '/boom'
 
 
-def test_failing_initapp(app, test_client, path_info):
+@pytest.fixture
+def secret_key():
+    return os.urandom(24)
+
+
+def test_failing_initapp(app, test_client_instance, path_info):
     @app.route(path_info)
     def boom():
         1 / 0
@@ -30,20 +42,21 @@ def test_failing_initapp(app, test_client, path_info):
     Breathalyzer(app)
 
     try:
-        test_client.get(path_info)
+        test_client_instance.get(path_info)
     except Exception as e:
         assert type(e) == datadog.api.exceptions.ApiNotInitialized
 
     Breathalyzer(app, api_key='api_key', app_key='app_key')
 
     try:
-        test_client.get(path_info)
+        test_client_instance.get(path_info)
     except Exception as e:
         assert type(e) == ValueError
         assert 'Invalid JSON response' in e.args[0]
         assert 'Invalid API Key' in e.args[0]
 
-def test_succesful_event(app, test_client, path_info):
+
+def test_succesful_event(app, test_client, path_info, secret_key):
     @app.route(path_info, methods=['GET', 'POST'])
     def boom():
         1 / 0
@@ -62,9 +75,30 @@ def test_succesful_event(app, test_client, path_info):
     data = dict((to_ban, to_find))
     h_blacklist = ['/{0}'.format(header)]
     d_blacklist = ['/{0}'.format(to_ban[0])]
+
+    user_id = 'DrunkUser'
+    app.secret_key = secret_key
+    login_manager = flask_login.LoginManager()
+
+    class User(flask_login.UserMixin):
+        def get_id(self):
+            return user_id
+
+    @login_manager.user_loader
+    def user_loader(username):
+        return User()
+
+    login_manager.init_app(app)
+
     ba = Breathalyzer(app, headers_blacklist=h_blacklist, data_blacklist=d_blacklist, **options)
     assert ba.last_event_id is None
-    response = test_client.post(path_info, data=json.dumps(data), content_type='application/json', headers=headers)
+
+    with test_client() as c:
+        with c.session_transaction() as sess:
+            sess['user_id'] = user_id
+            sess['_fresh'] = True
+        response = c.post(path_info, data=json.dumps(data), content_type='application/json', headers=headers)
+
     assert response.status == '500 INTERNAL SERVER ERROR'
     assert b'<title>500 Internal Server Error</title>' in response.data
     assert response.mimetype == 'text/html'
@@ -72,6 +106,7 @@ def test_succesful_event(app, test_client, path_info):
     assert ba.last_event_id == ba.last_event['event']['id']
     assert to_ban[1] not in ba.last_event['event']['text']
     assert to_find[1] in ba.last_event['event']['text']
+    assert user_id in ba.last_event['event']['text']
 
 
 def test_apply_blacklist():

@@ -165,11 +165,7 @@ class Breathalyzer(object):
         if not is_authenticated:
             return {}
 
-        user_info = {
-            'id': current_user.get_id(),
-        }
-
-        return user_info
+        return dict(id=current_user.get_id())
 
     def capture_exception(self):
         # Get a formatted version of the traceback.
