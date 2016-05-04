@@ -83,6 +83,22 @@ def apply_blacklist(dic, lis, separator='/', value_to_replace='BLACKLISTED'):
         Allows data access via extended slice notation.
         http://stackoverflow.com/questions/15077973/how-can-i-access-a-deeply-nested-dictionary-using-tuples
         """
+        def __getitem__(self, keys):
+            # Let's assume *keys* is a list or tuple.
+            if isinstance(keys, (tuple, list)):
+                try:
+                    node = self
+                    for key in keys:
+                        node = dict.__getitem__(node, key)
+                    return node
+                except TypeError:
+                    # *keys* is not a list or tuple.
+                    pass
+            try:
+                return dict.__getitem__(self, keys)
+            except KeyError:
+                raise KeyError(keys)
+
         def __setitem__(self, keys, value):
             # Let's assume *keys* is a list or tuple.
             if isinstance(keys, (tuple, list)):
@@ -101,5 +117,11 @@ def apply_blacklist(dic, lis, separator='/', value_to_replace='BLACKLISTED'):
             dict.__setitem__(self, keys, value)
     nd = NestedDict(dic)
     for l in lis:
-        nd[l.split(separator)[1:]] = value_to_replace
+        keys = l.split(separator)[1:]
+        try:
+            nd[keys]
+        except KeyError:
+            pass
+        else:
+            nd[keys] = value_to_replace
     return nd

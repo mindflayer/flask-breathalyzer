@@ -115,6 +115,6 @@ def test_succesful_event(app, test_client, path_info, secret_key, user_id):
 def test_apply_blacklist():
     v = 'foobar'
     d1 = dict(a=1, b=dict(c=3, d=dict(e=4)))
-    d2 = apply_blacklist(d1, ('/a', '/b/d/e'), value_to_replace=v)
+    d2 = apply_blacklist(d1, ('/a', '/b/d/e', '/z'), value_to_replace=v)
     assert d2 == dict(a=v, b=dict(c=3, d=dict(e=v)))
     assert id(d1) != id(d2)
