@@ -68,8 +68,8 @@ def test_succesful_event(app, test_client, path_info, secret_key, user_id):
 
     # from http://docs.datadoghq.com/api/
     options = {
-        'api_key': '12345',
-        'app_key': '54321'
+        'api_key': '0c82710457ebeaeab1c901c0152852fa',
+        'app_key': 'b8e5af1010d49ac73cadde2a5be5ef01b6ae73c6'
     }
 
     header = 'Accept'
